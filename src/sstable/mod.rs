@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs::*;
 use std::io::prelude::*;
 
@@ -6,13 +7,31 @@ struct KVPair {
     value: String,
 }
 
-struct SSTable {
+pub struct SSTable {
     c_time: u32,
     pairs: Vec<KVPair>,
 }
 
+impl fmt::Display for KVPair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(key: {}, value: {})", self.key, self.value)
+    }
+}
+
+impl fmt::Display for SSTable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(len: {}, min: {}, max: {})",
+            self.pairs.len(),
+            self.pairs[0],
+            self.pairs[self.pairs.len() - 1]
+        )
+    }
+}
+
 impl SSTable {
-    fn new(path: &str) -> Result<Self, std::io::Error> {
+    pub fn new(path: &str) -> Result<Self, std::io::Error> {
         let mut file = File::open(path)?;
         let mut buffer = Vec::new();
 
@@ -32,10 +51,9 @@ impl SSTable {
         // deal with nkeys KVPairs
         let mut pairs = Vec::new();
 
-        let mut now_key : i32 = 0;
-        let mut now_key_index : u32 = 0;
-        let mut next_key_index : u32 = 0;
-        let mut value_len : u32 = 0;
+        let mut now_key: i32 = 0;
+        let mut now_key_index: u32 = 0;
+        let mut next_key_index: u32 = 0;
 
         for i in 0..nkeys - 1 {
             // get the key
@@ -57,7 +75,7 @@ impl SSTable {
                 ];
                 now_key_index = u32::from_le_bytes(now_key_index_slice);
             } else {
-                now_key_index = next_key_index; 
+                now_key_index = next_key_index;
             }
 
             // then search for the next key
@@ -70,8 +88,9 @@ impl SSTable {
             next_key_index = u32::from_le_bytes(next_key_index_slice);
 
             // get the value
-            value_len = next_key_index - now_key_index;
-            let now_value = String::from_utf8(buffer[now_key_index as usize..next_key_index as usize].to_vec()).unwrap();
+            let now_value =
+                String::from_utf8(buffer[now_key_index as usize..next_key_index as usize].to_vec())
+                    .unwrap();
 
             pairs.push(KVPair {
                 key: now_key,
@@ -79,9 +98,39 @@ impl SSTable {
             })
         }
 
+        // now deal with the last element
+        let now_key_slice: [u8; 4] = [
+            buffer[(12 + 8 * (nkeys - 1)) as usize],
+            buffer[(13 + 8 * (nkeys - 1)) as usize],
+            buffer[(14 + 8 * (nkeys - 1)) as usize],
+            buffer[(15 + 8 * (nkeys - 1)) as usize],
+        ];
+        now_key = i32::from_le_bytes(now_key_slice);
+
+        now_key_index = next_key_index;
+        let now_value =
+            String::from_utf8(buffer[now_key_index as usize..file_size as usize].to_vec()).unwrap();
+
+        pairs.push(KVPair {
+            key: now_key,
+            value: now_value,
+        });
+
+        assert_eq!(pairs.len(), nkeys);
+
         Ok(SSTable {
             c_time: c_time,
-            pairs: Vec::new(),
+            pairs: pairs,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_sstable() {
+        unimplemented!()
     }
 }
