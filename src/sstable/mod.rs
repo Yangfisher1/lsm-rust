@@ -117,6 +117,11 @@ impl SSTable {
             pairs: pairs,
         })
     }
+
+    fn sortSSTables(pairs: Vec<SSTable>) -> (u32, Vec<KVPair>) {
+        // we need a index slice
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]
@@ -126,7 +131,7 @@ mod tests {
     #[test]
     // a simple basic test to check the creation
     fn test_creation() {
-        let test_sstable = SSTable::new("/Users/chrisfisher/lsm-rust/data/sstable-1.sst").unwrap();
+        let test_sstable = SSTable::new("./data/sstable-1.sst").unwrap();
 
         let test_len = test_sstable.pairs.len();
 
